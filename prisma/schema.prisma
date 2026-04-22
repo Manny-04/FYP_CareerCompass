@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @db.Uuid
+  email        String   @unique
+  fullName     String?  @map("full_name")
+  university   String?
+  yearOfStudy  Int?     @map("year_of_study")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  quizSessions QuizSession[]
+  roadmaps     Roadmap[]
+
+  @@map("users")
+}
+
+model QuizSession {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  stemScore          Int @default(0) @map("stem_score")
+  creativeScore      Int @default(0) @map("creative_score")
+  businessScore      Int @default(0) @map("business_score")
+  healthcareScore    Int @default(0) @map("healthcare_score")
+  educationScore     Int @default(0) @map("education_score")
+  skilledTradesScore Int @default(0) @map("skilled_trades_score")
+  publicServiceScore Int @default(0) @map("public_service_score")
+
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers         QuizAnswer[]
+  recommendations CareerRecommendation[]
+
+  @@map("quiz_sessions")
+}
+
+model QuizAnswer {
+  id             String   @id @default(uuid()) @db.Uuid
+  sessionId      String   @map("session_id") @db.Uuid
+  questionIndex  Int      @map("question_index")
+  selectedOption String   @map("selected_option")
+  category       String
+  answeredAt     DateTime @default(now()) @map("answered_at")
+
+  session QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, questionIndex])
+  @@map("quiz_answers")
+}
+
+model CareerRecommendation {
+  id             String   @id @default(uuid()) @db.Uuid
+  sessionId      String   @map("session_id") @db.Uuid
+  rank           Int
+  careerTitle    String   @map("career_title")
+  description    String
+  category       String
+  requiredSkills String[] @map("required_skills")
+  salaryRange    String   @map("salary_range")
+  industryOutlook String  @map("industry_outlook")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  session QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("career_recommendations")
+}
+
+enum RoadmapStatus {
+  PENDING
+  GENERATING
+  COMPLETE
+  FAILED
+}
+
+model Roadmap {
+  id              String        @id @default(uuid()) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  careerPath      String        @map("career_path")
+  status          RoadmapStatus @default(PENDING)
+  requiredDegree  String?       @map("required_degree")
+  gradeThresholds Json?         @map("grade_thresholds")
+  totalTimeline   String?       @map("total_timeline")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phases RoadmapPhase[]
+
+  @@map("roadmaps")
+}
+
+model RoadmapPhase {
+  id            String   @id @default(uuid()) @db.Uuid
+  roadmapId     String   @map("roadmap_id") @db.Uuid
+  phaseNumber   Int      @map("phase_number")
+  title         String
+  timeframe     String
+  description   String
+  skills        String[]
+  certifications String[]
+  internships   String[]
+  milestones    String[]
+
+  roadmap Roadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@unique([roadmapId, phaseNumber])
+  @@map("roadmap_phases")
+}
